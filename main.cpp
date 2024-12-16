@@ -1,73 +1,106 @@
 #include <iostream>
 #include <vector>
+#include <algorithm>
 using namespace std;
 
-
-void heapify(vector<int>& arr, int n, int i)
+// Structure to represent an edge in the graph
+struct Edge
 {
-    int largest = i;       // Initialize largest as root
-    int left = 2 * i + 1;  // Left child
-    int right = 2 * i + 2; // Right child
+    int src, dest, weight;
+};
 
-    // If left child is larger than root
-    if (left < n && arr[left] > arr[largest])
-        largest = left;
+// Structure to represent a subset for union-find
+struct Subset
+{
+    int parent;
+    int rank;
+};
 
-    // If right child is larger than the largest so far
-    if (right < n && arr[right] > arr[largest])
-        largest = right;
+// Comparator function to sort edges by weight
+bool compareEdges(Edge a, Edge b)
+{
+    return a.weight < b.weight;
+}
 
-    // If the largest is not root
-    if (largest != i)
-    {
-        swap(arr[i], arr[largest]);
+// Function to find the parent of a node (with path compression)
+int find(Subset subsets[], int node)
+{
+    if (subsets[node].parent != node)
+        subsets[node].parent = find(subsets, subsets[node].parent);
+    return subsets[node].parent;
+}
 
-        // Recursively heapify the affected subtree
-        heapify(arr, n, largest);
+// Function to perform union of two subsets
+void Union(Subset subsets[], int x, int y)
+{
+    int xroot = find(subsets, x);
+    int yroot = find(subsets, y);
+
+    if (subsets[xroot].rank < subsets[yroot].rank)
+        subsets[xroot].parent = yroot;
+    else if (subsets[xroot].rank > subsets[yroot].rank)
+        subsets[yroot].parent = xroot;
+    else {
+        subsets[yroot].parent = xroot;
+        subsets[xroot].rank++;
     }
 }
 
-// Function to perform Heap Sort
-void heapSort(vector<int>& arr)
+// Function to implement Kruskal's Algorithm
+void kruskalMST(vector<Edge>& edges, int V)
 {
-    int n = arr.size();
+    // Sort edges by weight
+    sort(edges.begin(), edges.end(), compareEdges);
 
-    // Build a max heap
-    for (int i = n / 2 - 1; i >= 0; i--)
-        heapify(arr, n, i);
-
-    // Extract elements from heap one by one
-    for (int i = n - 1; i > 0; i--)
+    // Allocate memory for subsets
+    Subset* subsets = new Subset[V];
+    for (int v = 0; v < V; ++v)
     {
-        // Move the current root to the end
-        swap(arr[0], arr[i]);
-
-
-        heapify(arr, i, 0);
+        subsets[v].parent = v;
+        subsets[v].rank = 0;
     }
-}
 
+    vector<Edge> result; // To store the resultant MST
 
-void printArray(const vector<int>& arr)
-{
-    for (int val : arr)
-        cout << val << " ";
-    cout << endl;
+    for (Edge edge : edges)
+    {
+        int x = find(subsets, edge.src);
+        int y = find(subsets, edge.dest);
+
+        // If including this edge doesn't form a cycle
+        if (x != y)
+        {
+            result.push_back(edge);
+            Union(subsets, x, y);
+        }
+
+        // Stop if MST has (V-1) edges
+        if (result.size() == V - 1)
+            break;
+    }
+
+    // Display the resulting MST
+    cout << "Edges in the MST:\n";
+    int totalWeight = 0;
+    for (Edge e : result)
+    {
+        cout << e.src << " -- " << e.dest << " == " << e.weight << endl;
+        totalWeight += e.weight;
+    }
+    cout << "Total weight of MST: " << totalWeight << endl;
+
+    delete[] subsets;
 }
 
 int main()
 {
+    int V = 4;
+    vector<Edge> edges =
+    {
+        {0, 1, 10}, {0, 2, 6}, {0, 3, 5}, {1, 3, 15}, {2, 3, 4}
+    };
 
-    vector<int> arr = {12, 11, 13, 5, 6, 7};
-
-    cout << "Original array: ";
-    printArray(arr);
-
-
-    heapSort(arr);
-
-    cout << "Sorted array: ";
-    printArray(arr);
+    kruskalMST(edges, V);
 
     return 0;
 }
